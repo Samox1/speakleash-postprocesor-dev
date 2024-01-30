@@ -39,7 +39,7 @@ def initialize_worker():
 def generate_sample(dataset, sample_dir, samples = None):
     if not samples:
         samples = [{"text": txt, "meta": meta} for (txt, meta) in dataset.ext_data][:5]
-    with open(os.path.join(sample_dir, dataset.name + ".sample"), "w", encoding="utf-8") as f:
+    with open(os.path.join(sample_dir, f"{dataset.name}.sample"), "w", encoding="utf-8") as f:
         json.dump(samples, f, ensure_ascii=False, indent=4)
 
 

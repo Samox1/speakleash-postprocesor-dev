@@ -78,10 +78,6 @@ class Deduplicator:
         :return: Total number of documents in dataset (int).
         """
         log("Gathering documents data...", "INFO")
-        index_max = 0
-
-        for x in tqdm(dataset_obj.ext_data):
-            index_max += 1
-
+        index_max = sum(1 for _ in tqdm(dataset_obj.ext_data))
         log(f"Documents in [{dataset_obj.name}] dataset: {index_max}", "INFO")
         return index_max

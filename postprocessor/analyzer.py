@@ -36,14 +36,12 @@ class Analyzer(object):
         parts = []
 
         while start < len(self.txt):
-            if end >= len(self.txt):
-                end = len(self.txt)
-            
+            end = min(end, len(self.txt))
             # Check if the split point is not a space
             if not self.txt[end-1].isspace() and end < len(self.txt):
                 while not self.txt[end-1].isspace() and end < len(self.txt):
                     end += 1
-            
+
             parts.append(self.txt[start:end])
             start = end
             end += self.MAX_TEXT_PART
@@ -78,28 +76,28 @@ class Analyzer(object):
         text_parts = self._split_text()
 
         for part in text_parts:
-        
+
             doc = self.nlp(part)
 
             for token in doc:
                 if not token.is_punct and not token.is_space:
-                    if token.is_oov and not token.pos_ == "SYM":
+                    if token.is_oov and token.pos_ != "SYM":
                         oovs += 1
-                    
+
                     # Update stats based on token's part-of-speech
-                    if token.pos_ == "X":
-                        pos_x += 1
-                    elif token.pos_ =="NUM":
-                        pos_num += 1
-                    elif token.pos_ == "NOUN":
-                        nouns += 1
-                    elif token.pos_ == "VERB":
-                        verbs += 1
-                    elif token.pos_ == "ADJ":
+                    if token.pos_ == "ADJ":
                         adjectives += 1
                     elif token.pos_ == "ADV":
                         adverbs += 1
 
+                    elif token.pos_ == "NOUN":
+                        nouns += 1
+                    elif token.pos_ == "NUM":
+                        pos_num += 1
+                    elif token.pos_ == "VERB":
+                        verbs += 1
+                    elif token.pos_ == "X":
+                        pos_x += 1
                     # Add token's lemma to unique words
                     uniq_words.add(token.lemma_)
 
@@ -112,50 +110,37 @@ class Analyzer(object):
                     stopwords += 1
                 if token.is_punct:
                     punctuations += 1
-                elif not token.is_space and not token.pos_ == "SYM":
+                elif not token.is_space and token.pos_ != "SYM":
                     words += 1
                     if re.match(self.CAMEL_CASE_PATTERN, token.text):
                         camel_case += 1
                     if token.text.isupper():
                         capitalized_words +=1         
-                                        
+
 
             for sentence in doc.sents:
                 avg_sentence_length += len(sentence)
                 sentences += 1
 
-        if sentences > 0:
-            avg_sentence_length = avg_sentence_length / sentences
-        else:
-            avg_sentence_length = 0
-
+        avg_sentence_length = avg_sentence_length / sentences if sentences > 0 else 0
         if words > 0:
             avg_word_length = avg_word_length / words
+            noun_ratio = nouns / words
+            verb_ratio = verbs / words
+            adj_ratio = adjectives / words
+            lexical_density = len(uniq_words) / words
+            gunning_fog = textstat.gunning_fog(self.txt)
+
         else:
             avg_word_length = 0
 
-        if words > 0:
-            noun_ratio = nouns / words
-        else:
             noun_ratio = 0
 
-        if words > 0:
-            verb_ratio = verbs / words
-        else:
             verb_ratio = 0   
 
-        if words > 0:
-            adj_ratio = adjectives / words
-        else:
             adj_ratio = 0
 
-        if words > 0:
-            lexical_density = len(uniq_words) / words
-        else:
             lexical_density = 0
-
-        if words > 0:
-            gunning_fog = textstat.gunning_fog(self.txt)
 
         new_meta["characters"] = len(self.txt)
         new_meta["sentences"] = sentences
@@ -187,17 +172,13 @@ class Analyzer(object):
         return new_meta
 
     def go(self):
-        new_meta = self.meta
-
-        if self.metrics:
-            new_meta = self._count_metrics()
-
+        new_meta = self._count_metrics() if self.metrics else self.meta
         if self.quality_metrics:
             if sanity_check(new_meta):
                 get_doc_quality(new_meta)
             else:
                 name = self.meta.get("name", self.meta.get("url", ""))
-                log("Required metrics for quality check not found in meta: " + name, "WARNING")
+                log(f"Required metrics for quality check not found in meta: {name}", "WARNING")
 
         if self.lang_detect:
             new_meta["language"] = detect(self.txt.replace('\n',' '))
